@@ -14,7 +14,7 @@ app.use(express.json()); // Essential for parsing req.body
 // Cache DB connection across serverless function invocations
 let isConnected = false;
 
-const connectDB = async () => {
+export const connectDB = async () => {
     if (isConnected || mongoose.connection.readyState >= 1) {
         return;
     }
@@ -23,7 +23,9 @@ const connectDB = async () => {
         return;
     }
     try {
-        await mongoose.connect(process.env.MONGO_URI);
+        await mongoose.connect(process.env.MONGO_URI, {
+            serverSelectionTimeoutMS: 5000, // Fail fast (5s) instead of hanging if Atlas IP is blocked
+        });
         isConnected = true;
         console.log('MongoDB connected successfully');
     } catch (error) {
@@ -31,18 +33,22 @@ const connectDB = async () => {
     }
 };
 
-// Ensure DB is connected before handling any route
-app.use(async (req, res, next) => {
+// Healthcheck endpoint (does not require DB)
+app.get('/', (req, res) => {
+    res.send({ 
+        message: 'Server running',
+        dbStatus: isConnected || mongoose.connection.readyState >= 1 ? 'connected' : 'disconnected'
+    });
+});
+
+// Chatbot routes (uses Groq AI, does not require MongoDB)
+app.use("/api/chatbot", chatbotRoute);
+
+// Auth routes (requires MongoDB connection)
+app.use('/user', async (req, res, next) => {
     await connectDB();
     next();
-});
-
-app.get('/', (req, res) => {
-    res.send({ message: 'Server running' });
-});
-
-app.use('/user', auth);
-app.use("/api/chatbot", chatbotRoute);
+}, auth);
 
 // Start server locally only (Vercel serverless invokes the exported app handler directly)
 if (!process.env.VERCEL) {
