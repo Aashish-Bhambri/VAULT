@@ -44,7 +44,7 @@ const SignupPage = () => {
         setLoading(true);
 
         try {
-            const response = await axios.post('http://localhost:8080/user/signup', {
+            const response = await axios.post(`${import.meta.env.BACKEND_URL}/user/signup`, {
                 username: formData.username,
                 email: formData.email,
                 password: formData.password,

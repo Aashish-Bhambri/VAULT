@@ -45,7 +45,7 @@ const ChatBot = () => {
 
         try {
             // 2. Call backend controller API
-            const response = await axios.post("http://localhost:8080/api/chatbot/message", {
+            const response = await axios.post(`${import.meta.env.BACKEND_URL}/api/chatbot/message`, {
                 message: query,
             });
 
@@ -187,8 +187,8 @@ const ChatBot = () => {
                                 >
                                     <div
                                         className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 leading-relaxed text-sm whitespace-pre-wrap ${msg.sender === "user"
-                                                ? "bg-blue-600 text-white rounded-br-xs"
-                                                : "bg-[#222328] border border-[#34363D] text-zinc-200 rounded-bl-xs"
+                                            ? "bg-blue-600 text-white rounded-br-xs"
+                                            : "bg-[#222328] border border-[#34363D] text-zinc-200 rounded-bl-xs"
                                             }`}
                                     >
                                         {msg.text}

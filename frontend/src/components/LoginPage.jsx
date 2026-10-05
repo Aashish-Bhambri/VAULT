@@ -43,7 +43,7 @@ const LoginPage = () => {
         setLoading(true);
 
         try {
-            const response = await axios.post('http://localhost:8080/user/login', {
+            const response = await axios.post(`${import.meta.env.BACKEND_URL}/user/login`, {
                 email: formData.email,
                 password: formData.password,
             });
