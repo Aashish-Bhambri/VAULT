@@ -9,10 +9,9 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 
 app.use(cors());
-app.use(express.json()); // Essential for parsing req.body
+app.use(express.json()); 
 
-// Cache DB connection across serverless function invocations
-let isConnected = false;
+
 
 export const connectDB = async () => {
     if (isConnected || mongoose.connection.readyState >= 1) {
