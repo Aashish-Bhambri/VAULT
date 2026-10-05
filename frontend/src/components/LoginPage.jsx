@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from './Navbar';
 import useGames from '../hooks/useGames';
-import axios from 'axios';
+import backendApi from '../services/backendApi';
 import { useDispatch } from 'react-redux';
 import { useNavigate, Link } from 'react-router';
 import { setCredentials } from '../app/features/authSlice';
@@ -43,7 +43,7 @@ const LoginPage = () => {
         setLoading(true);
 
         try {
-            const response = await axios.post(`${import.meta.env.BACKEND_URL}/user/login`, {
+            const response = await backendApi.post('/user/login', {
                 email: formData.email,
                 password: formData.password,
             });

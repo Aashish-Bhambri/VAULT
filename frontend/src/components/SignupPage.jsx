@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from './Navbar';
 import useGames from '../hooks/useGames';
-import axios from 'axios';
+import backendApi from '../services/backendApi';
 import { useDispatch } from 'react-redux';
 import { useNavigate, Link } from 'react-router';
 import { setCredentials } from '../app/features/authSlice';
@@ -44,7 +44,7 @@ const SignupPage = () => {
         setLoading(true);
 
         try {
-            const response = await axios.post(`${import.meta.env.BACKEND_URL}/user/signup`, {
+            const response = await backendApi.post('/user/signup', {
                 username: formData.username,
                 email: formData.email,
                 password: formData.password,

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import axios from "axios";
+import backendApi from "../services/backendApi";
 import { FaRegWindowMinimize } from "react-icons/fa";
 import { BsSearch, BsFillSendFill, BsCircleFill } from "react-icons/bs";
 import { IoReloadOutline } from "react-icons/io5";
@@ -45,7 +45,7 @@ const ChatBot = () => {
 
         try {
             // 2. Call backend controller API
-            const response = await axios.post(`${import.meta.env.BACKEND_URL}/api/chatbot/message`, {
+            const response = await backendApi.post("/api/chatbot/message", {
                 message: query,
             });
 
