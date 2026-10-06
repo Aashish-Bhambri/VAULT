@@ -7,6 +7,7 @@ import Home from "./pages/Home";
 import GameDetails from "./pages/GameDetails";
 import LoginPage from "./components/LoginPage";
 import SignupPage from "./components/SignupPage";
+import ChatbotPage from "./pages/ChatbotPage";
 
 function App() {
 
@@ -24,6 +25,9 @@ function App() {
       </Route>
       <Route path='/signup' >
         <Route index element= {<SignupPage/>}/>
+      </Route>
+      <Route path='/chatbot'>
+      <Route index element= {<ChatbotPage/>}/>
       </Route>
     </Routes>
   );
