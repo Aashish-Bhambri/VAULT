@@ -39,9 +39,6 @@ const MainLayout = () => {
                 <div className='flex items-start'>
                     <Sidebar />
                     <Outlet />
-                    <div className='fixed z-50 bottom-2 right-2 '>
-                        <ChatBot/>
-                    </div>
 
                 </div>
             </div>
