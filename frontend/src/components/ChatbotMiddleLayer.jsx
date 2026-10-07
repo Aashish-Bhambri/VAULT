@@ -1,10 +1,17 @@
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import FoldText from './FoldText';
 import backendApi from '../services/backendApi';
+import BotMessage from './BotMessage';
 
 const ChatbotMiddleLayer = () => {
     const [input, setInput] = useState("");
     const [messages, setMessages] = useState([]);
+    const [isStreaming, setIsStreaming] = useState(false);
+    const messagesEndRef = useRef(null);
+
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
 
     const suggetions = [
         {
@@ -29,30 +36,106 @@ const ChatbotMiddleLayer = () => {
         },
     ]
 
-    const handleSubmit = async(textToSend) => {
-        const query= (textToSend||input).trim();
-        if(!query.trim()) return;
-        const newMessages = [...messages,{sender:"user", text:query}];
-        setMessages(newMessages);
-        setInput("");
-        console.log(messages);
+    const handleSubmit = async (textToSend) => {
+        const query = (textToSend || input).trim();
+        if (!query.trim() || isStreaming) return;
 
-        try{
-            const res =await backendApi.post("/api/chatbot/",{
-                message: query
+        // 1. Add User message and empty Bot placeholder for incoming tokens
+        setMessages((prev) => [
+            ...prev,
+            { sender: "user", text: query },
+            { sender: "bot", text: "" }
+        ]);
+        setInput("");
+        setIsStreaming(true);
+
+        try {
+            const baseUrl = backendApi.defaults.baseURL || "http://localhost:8080";
+            const response = await fetch(`${baseUrl}/api/chatbot/`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: query }),
             });
-            const reply = res.data?.reply || "I didnt receive a response.";
-            setMessages((prev)=>[...prev,{sender:"bot",text:reply}])
-        }catch(error){
+
+            if (!response.ok || !response.body) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const contentType = response.headers.get("content-type") || "";
+
+            if (contentType.includes("text/event-stream")) {
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder("utf-8");
+                let buffer = "";
+
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split("\n\n");
+                    buffer = lines.pop() || ""; // retain trailing uncompleted chunk
+
+                    for (const line of lines) {
+                        const trimmed = line.trim();
+                        if (trimmed.startsWith("data: ")) {
+                            const dataStr = trimmed.slice(6).trim();
+                            if (dataStr === "[DONE]") break;
+
+                            try {
+                                const parsed = JSON.parse(dataStr);
+                                const token = parsed.token;
+                                if (token) {
+                                    setMessages((prev) => {
+                                        const updated = [...prev];
+                                        const last = updated[updated.length - 1];
+                                        if (last && last.sender === "bot") {
+                                            updated[updated.length - 1] = {
+                                                ...last,
+                                                text: last.text + token,
+                                            };
+                                        }
+                                        return updated;
+                                    });
+                                }
+                            } catch (parseErr) {
+                                console.error("SSE parse error:", parseErr);
+                            }
+                        }
+                    }
+                }
+            } else {
+                // In case backend sent non-streaming JSON
+                const data = await response.json();
+                const replyText = data.reply || data.message || "No response received.";
+                setMessages((prev) => {
+                    const updated = [...prev];
+                    const last = updated[updated.length - 1];
+                    if (last && last.sender === "bot") {
+                        updated[updated.length - 1] = {
+                            ...last,
+                            text: replyText,
+                        };
+                    }
+                    return updated;
+                });
+            }
+        } catch (error) {
             console.error("Chat error:", error);
-            setMessages((prev) => [
-                ...prev,
-                {
-                    sender: "bot",
-                    text: "Sorry, I couldn't reach the server. Please ensure the backend is running.",
-                },
-            ]);
-        } 
+            setMessages((prev) => {
+                const updated = [...prev];
+                const last = updated[updated.length - 1];
+                if (last && last.sender === "bot" && !last.text) {
+                    updated[updated.length - 1] = {
+                        ...last,
+                        text: "Sorry, I couldn't reach the server. Please ensure the backend is running.",
+                    };
+                }
+                return updated;
+            });
+        } finally {
+            setIsStreaming(false);
+        }
     }
 
     const handleKeyDown = (e) => {
@@ -124,17 +207,31 @@ const ChatbotMiddleLayer = () => {
                                 className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
                             >
                                 <div
-                                    className={`max-w-[75%] p-3.5 rounded-2xl text-sm leading-relaxed ${
-                                        isUser
+                                    className={`max-w-[85%] p-4 rounded-2xl text-sm leading-relaxed ${isUser
                                             ? 'bg-[#19E6C1] text-[#151515] font-semibold rounded-br-sm shadow-sm'
                                             : 'bg-[#202020] border border-[#303030] text-[#F5F5F5] rounded-bl-sm shadow-sm'
-                                    }`}
+                                        }`}
                                 >
-                                    {text}
+                                    {isUser ? (
+                                        text
+                                    ) : text ? (
+                                        <div className='relative'>
+                                            <BotMessage content={text} />
+                                            {isStreaming && idx === messages.length - 1 && (
+                                                <span className='inline-block w-2 h-4 ml-1 bg-[#19E6C1] animate-pulse align-middle' />
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className='flex items-center gap-2 py-0.5 text-xs text-[#A3A3A3]'>
+                                            <span className='w-2 h-2 rounded-full bg-[#19E6C1] animate-ping' />
+                                            <span>Thinking...</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )
                     })}
+                    <div ref={messagesEndRef} />
                 </div>
             }
             <div className='absolute bottom-1 w-full max-w-3xl mx-auto pb-2'>
@@ -146,12 +243,16 @@ const ChatbotMiddleLayer = () => {
                         onChange={(e) => (setInput(e.target.value))}
                         value={input}
                         onKeyDown={handleKeyDown}
+                        disabled={isStreaming}
                     />
                     <button
                         onClick={() => handleSubmit()}
-
-                        className='bg-[#19E6C1] hover:bg-[#35F2D0] active:bg-[#0D9F88] text-[#151515] font-semibold text-xs px-4 py-2 rounded-xl transition-colors cursor-pointer'>
-                        Send
+                        disabled={isStreaming}
+                        className={`bg-[#19E6C1] hover:bg-[#35F2D0] active:bg-[#0D9F88] text-[#151515] font-semibold text-xs px-4 py-2 rounded-xl transition-colors cursor-pointer ${
+                            isStreaming ? 'opacity-60 cursor-not-allowed' : ''
+                        }`}
+                    >
+                        {isStreaming ? 'Thinking...' : 'Send'}
                     </button>
                 </div>
                 <div className='text-[11px] text-[#737373] text-center mt-2'>
