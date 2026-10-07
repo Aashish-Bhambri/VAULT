@@ -13,6 +13,8 @@ app.use(express.json());
 
 
 
+let isConnected = false;
+
 export const connectDB = async () => {
     if (isConnected || mongoose.connection.readyState >= 1) {
         return;
