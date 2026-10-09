@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
+import { useParams, useNavigate } from 'react-router';
+import { useSelector } from 'react-redux';
 import FoldText from './FoldText';
 import backendApi from '../services/backendApi';
 import BotMessage from './BotMessage';
@@ -8,6 +10,36 @@ const ChatbotMiddleLayer = () => {
     const [messages, setMessages] = useState([]);
     const [isStreaming, setIsStreaming] = useState(false);
     const messagesEndRef = useRef(null);
+    const { chatId } = useParams();
+    const navigate = useNavigate();
+    const user = useSelector((state) => state.auth?.user);
+
+    const loadedChatIdRef = useRef(chatId || null);
+
+    // Load active conversation messages when chatId changes (only if switching to another chat)
+    useEffect(() => {
+        if (chatId) {
+            if (loadedChatIdRef.current === chatId) {
+                return; // Already loaded or created by current prompt
+            }
+            loadedChatIdRef.current = chatId;
+
+            const fetchConversation = async () => {
+                try {
+                    const res = await backendApi.get(`/api/chatbot/conversations/${chatId}`);
+                    if (res.data?.messages) {
+                        setMessages(res.data.messages);
+                    }
+                } catch (err) {
+                    console.error("Failed to load conversation:", err);
+                }
+            };
+            fetchConversation();
+        } else {
+            loadedChatIdRef.current = null;
+            setMessages([]);
+        }
+    }, [chatId]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -54,7 +86,11 @@ const ChatbotMiddleLayer = () => {
             const response = await fetch(`${baseUrl}/api/chatbot/`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ message: query }),
+                body: JSON.stringify({
+                    message: query,
+                    conversationId: chatId || null,
+                    userId: user?._id || null,
+                }),
             });
 
             if (!response.ok || !response.body) {
@@ -84,6 +120,14 @@ const ChatbotMiddleLayer = () => {
 
                             try {
                                 const parsed = JSON.parse(dataStr);
+
+                                // If new conversation was created on the fly, update URL and notify sidebar
+                                if (parsed.conversationId && !chatId) {
+                                    loadedChatIdRef.current = parsed.conversationId;
+                                    navigate(`/chatbot/${parsed.conversationId}`, { replace: true });
+                                    window.dispatchEvent(new Event("vault_chat_updated"));
+                                }
+
                                 const token = parsed.token;
                                 if (token) {
                                     setMessages((prev) => {
@@ -94,8 +138,10 @@ const ChatbotMiddleLayer = () => {
                                                 ...last,
                                                 text: last.text + token,
                                             };
+                                            return updated;
+                                        } else {
+                                            return [...updated, { sender: "bot", text: token }];
                                         }
-                                        return updated;
                                     });
                                 }
                             } catch (parseErr) {
@@ -135,6 +181,7 @@ const ChatbotMiddleLayer = () => {
             });
         } finally {
             setIsStreaming(false);
+            window.dispatchEvent(new Event("vault_chat_updated"));
         }
     }
 
@@ -153,13 +200,14 @@ const ChatbotMiddleLayer = () => {
     return (
         <main className='relative flex flex-col justify-between w-[60%] h-screen bg-[#151515] p-6 overflow-hidden'>
             {messages.length === 0 ?
-                <div className='flex flex-col items-center justify-center flex-1 max-w-2xl mx-auto text-center gap-4'>
+                <div className='flex flex-col items-center  flex-1 max-w-2xl mx-auto text-center gap-10'>
                     <div className='inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#1B1B1B] border border-[#303030] text-[#19E6C1] text-xs font-semibold tracking-wider uppercase'>
                         <span className='w-1.5 h-1.5 rounded-full bg-[#19E6C1] animate-pulse'></span>
                         VAULT AI / GAMING ASSISTANT
                     </div>
                     <FoldText
-                        text="Your Gaming Intelligence, evolved"
+                        
+                        text={`Your Gaming \n Intelligence, evolved`}
                         splitBy="char"
                         hinge="top"
                         trigger="mount"
@@ -208,8 +256,8 @@ const ChatbotMiddleLayer = () => {
                             >
                                 <div
                                     className={`max-w-[85%] p-4 rounded-2xl text-sm leading-relaxed ${isUser
-                                            ? 'bg-[#19E6C1] text-[#151515] font-semibold rounded-br-sm shadow-sm'
-                                            : 'bg-[#202020] border border-[#303030] text-[#F5F5F5] rounded-bl-sm shadow-sm'
+                                        ? 'bg-[#19E6C1] text-[#151515] font-semibold rounded-br-sm shadow-sm'
+                                        : 'bg-[#202020] border border-[#303030] text-[#F5F5F5] rounded-bl-sm shadow-sm'
                                         }`}
                                 >
                                     {isUser ? (
@@ -248,9 +296,8 @@ const ChatbotMiddleLayer = () => {
                     <button
                         onClick={() => handleSubmit()}
                         disabled={isStreaming}
-                        className={`bg-[#19E6C1] hover:bg-[#35F2D0] active:bg-[#0D9F88] text-[#151515] font-semibold text-xs px-4 py-2 rounded-xl transition-colors cursor-pointer ${
-                            isStreaming ? 'opacity-60 cursor-not-allowed' : ''
-                        }`}
+                        className={`bg-[#19E6C1] hover:bg-[#35F2D0] active:bg-[#0D9F88] text-[#151515] font-semibold text-xs px-4 py-2 rounded-xl transition-colors cursor-pointer ${isStreaming ? 'opacity-60 cursor-not-allowed' : ''
+                            }`}
                     >
                         {isStreaming ? 'Thinking...' : 'Send'}
                     </button>

@@ -26,9 +26,8 @@ function App() {
       <Route path='/signup' >
         <Route index element= {<SignupPage/>}/>
       </Route>
-      <Route path='/chatbot'>
-      <Route index element= {<ChatbotPage/>}/>
-      </Route>
+      <Route path='/chatbot' element={<ChatbotPage />} />
+      <Route path='/chatbot/:chatId' element={<ChatbotPage />} />
     </Routes>
   );
 }

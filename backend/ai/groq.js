@@ -1,4 +1,5 @@
 import Groq from "groq-sdk";
+import { AI_CONFIG } from "../config/ai.js";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
@@ -77,7 +78,7 @@ Do not output raw HTML.
 `;
 export async function generateStreamResponse(message) {
     return await groq.chat.completions.create({
-        model: "openai/gpt-oss-120b",
+        model: AI_CONFIG.chatModel,
         messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: message },
@@ -88,7 +89,7 @@ export async function generateStreamResponse(message) {
 
 export async function generateResponse(message) {
     const completion = await groq.chat.completions.create({
-        model: "openai/gpt-oss-120b",
+        model: AI_CONFIG.chatModel,
         messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: message },

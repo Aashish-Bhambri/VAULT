@@ -1,15 +1,36 @@
 import mongoose from "mongoose";
 
-const chatBotSchema = mongoose.Schema({
-    input:{
-        type:String,
-        required:true
+const messageSchema = new mongoose.Schema({
+    sender: {
+        type: String,
+        enum: ["user", "bot"],
+        required: true,
     },
-    output:{
-        type:String,
-        require:true
-    }
-})
+    text: {
+        type: String,
+        required: true,
 
-const ChatBot = mongoose.model('ChatBot',chatBotSchema);
-export default ChatBot;
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now
+    },
+
+});
+
+const conversationSchema = new mongoose.Schema({
+    userId:
+    {
+        type: mongoose.Schema.ObjectId,
+        ref: "User",
+        default:null
+    },
+    title:{
+        type:String,
+        default:"New Chat"
+    },
+    messages:[messageSchema],
+}, { timestamps: true })
+
+const Conversation = mongoose.model("Conversation", conversationSchema);
+export default Conversation;

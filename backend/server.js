@@ -42,8 +42,11 @@ app.get('/', (req, res) => {
     });
 });
 
-// Chatbot routes (uses Groq AI, does not require MongoDB)
-app.use("/api/chatbot", chatbotRoute);
+// Chatbot routes (requires MongoDB connection for conversation history)
+app.use("/api/chatbot", async (req, res, next) => {
+    await connectDB();
+    next();
+}, chatbotRoute);
 
 // Auth routes (requires MongoDB connection)
 app.use('/user', async (req, res, next) => {

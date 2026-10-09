@@ -36,6 +36,7 @@ const FOLD_TEXT_STYLES = `.fold-text {
   letter-spacing: -0.04em;
   white-space: pre-wrap;
   user-select: text;
+  white-space: nowrap;
 }
 
 .fold-text-sr-only {
@@ -150,7 +151,7 @@ const FoldText = ({
       segmentIndex += 1;
       return (
         <span
-          className="fold-text-segment"
+          className="fold-text-segment "
           data-fold-split={split}
           key={key}
           style={{ '--fold-perspective': `${safePerspective}px` }}
